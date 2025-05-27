@@ -2,10 +2,13 @@
 import React from 'react';
 import { Resume } from '@/types/resume';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { Plus, X, Edit } from 'lucide-react';
+import { PersonalInfoSection } from './sections/PersonalInfoSection';
+import { ProjectsSection } from './sections/ProjectsSection';
+import { TemplateSelector } from './sections/TemplateSelector';
 
 interface ResumeFormProps {
   resume: Resume;
@@ -26,6 +29,12 @@ export const ResumeForm = ({ resume, onResumeUpdate }: ResumeFormProps) => {
   const updateSummary = (summary: string) => {
     updateResume({
       sections: { ...resume.sections, summary }
+    });
+  };
+
+  const updateProjects = (projects: any[]) => {
+    updateResume({
+      sections: { ...resume.sections, projects }
     });
   };
 
@@ -50,66 +59,34 @@ export const ResumeForm = ({ resume, onResumeUpdate }: ResumeFormProps) => {
     });
   };
 
+  const updateTemplate = (template: string) => {
+    updateResume({ template: template as any });
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 space-y-6">
       <h2 className="text-xl font-semibold text-gray-900 mb-4">Edit Resume</h2>
       
+      {/* Template Selection */}
+      <TemplateSelector 
+        currentTemplate={resume.template} 
+        onTemplateChange={updateTemplate} 
+      />
+      
       {/* Personal Information */}
-      <div className="space-y-4">
-        <h3 className="font-medium text-gray-900">Personal Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="fullName">Full Name</Label>
-            <Input
-              id="fullName"
-              value={resume.userInfo.fullName}
-              onChange={(e) => updateUserInfo('fullName', e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="jobTitle">Job Title</Label>
-            <Input
-              id="jobTitle"
-              value={resume.userInfo.jobTitle}
-              onChange={(e) => updateUserInfo('jobTitle', e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={resume.userInfo.email || ''}
-              onChange={(e) => updateUserInfo('email', e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="phone">Phone</Label>
-            <Input
-              id="phone"
-              value={resume.userInfo.phone || ''}
-              onChange={(e) => updateUserInfo('phone', e.target.value)}
-            />
-          </div>
-          <div className="md:col-span-2">
-            <Label htmlFor="location">Location</Label>
-            <Input
-              id="location"
-              value={resume.userInfo.location || ''}
-              onChange={(e) => updateUserInfo('location', e.target.value)}
-            />
-          </div>
-        </div>
-      </div>
+      <PersonalInfoSection
+        userInfo={resume.userInfo}
+        onUpdate={updateUserInfo}
+      />
 
       {/* Professional Summary */}
       <div className="space-y-2">
         <Label htmlFor="summary">Professional Summary</Label>
-        <textarea
+        <Textarea
           id="summary"
           value={resume.sections.summary}
           onChange={(e) => updateSummary(e.target.value)}
-          className="w-full h-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="h-24"
           placeholder="Write a compelling professional summary..."
         />
       </div>
@@ -142,6 +119,12 @@ export const ResumeForm = ({ resume, onResumeUpdate }: ResumeFormProps) => {
           ))}
         </div>
       </div>
+
+      {/* Projects */}
+      <ProjectsSection
+        projects={resume.sections.projects || []}
+        onUpdate={updateProjects}
+      />
 
       {/* Experience Section */}
       <div className="space-y-3">

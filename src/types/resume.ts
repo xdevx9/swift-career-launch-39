@@ -7,6 +7,9 @@ export interface UserBasicInfo {
   location?: string;
   targetRole?: string;
   experience?: string;
+  linkedin?: string;
+  github?: string;
+  portfolio?: string;
 }
 
 export interface Experience {
@@ -31,6 +34,17 @@ export interface Education {
   gpa?: string;
 }
 
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  technologies: string[];
+  url?: string;
+  github?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
 export interface CustomSection {
   id: string;
   title: string;
@@ -44,10 +58,11 @@ export interface Resume {
     summary: string;
     experience: Experience[];
     education: Education[];
+    projects: Project[];
     skills: string[];
     customSections: CustomSection[];
   };
-  template: 'modern' | 'classic' | 'minimal';
+  template: 'modern' | 'classic' | 'minimal' | 'creative' | 'professional' | 'compact';
   language: string;
   lastModified: Date;
   createdAt: Date;

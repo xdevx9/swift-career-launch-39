@@ -98,6 +98,31 @@ export const exportToDOCX = async (resume: Resume): Promise<void> => {
             new Paragraph({ text: '' }),
           ]),
           
+          // Projects
+          ...(resume.sections.projects && resume.sections.projects.length > 0 ? [
+            new Paragraph({
+              text: 'PROJECTS',
+              heading: HeadingLevel.HEADING_1,
+            }),
+            ...resume.sections.projects.flatMap(project => [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: project.name,
+                    bold: true,
+                  }),
+                ],
+              }),
+              new Paragraph({
+                text: project.description,
+              }),
+              new Paragraph({
+                text: `Technologies: ${project.technologies.join(', ')}`,
+              }),
+              new Paragraph({ text: '' }),
+            ])
+          ] : []),
+          
           // Education
           new Paragraph({
             text: 'EDUCATION',
@@ -150,6 +175,8 @@ export const exportToText = (resume: Resume): void => {
 ${resume.userInfo.fullName}
 ${resume.userInfo.email} | ${resume.userInfo.phone}
 ${resume.userInfo.location}
+${resume.userInfo.linkedin ? `LinkedIn: ${resume.userInfo.linkedin}` : ''}
+${resume.userInfo.github ? `GitHub: ${resume.userInfo.github}` : ''}
 
 PROFESSIONAL SUMMARY
 ${resume.sections.summary}
@@ -160,6 +187,15 @@ ${exp.position} at ${exp.company}
 ${exp.startDate} - ${exp.current ? 'Present' : exp.endDate}
 ${exp.description.join('\n')}
 `).join('\n')}
+
+${resume.sections.projects && resume.sections.projects.length > 0 ? `
+PROJECTS
+${resume.sections.projects.map(project => `
+${project.name}
+${project.description}
+Technologies: ${project.technologies.join(', ')}
+`).join('\n')}
+` : ''}
 
 EDUCATION
 ${resume.sections.education.map(edu => `
