@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, X, Edit } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { PersonalInfoSection } from './sections/PersonalInfoSection';
 import { ProjectsSection } from './sections/ProjectsSection';
+import { ExperienceSection } from './sections/ExperienceSection';
+import { EducationSection } from './sections/EducationSection';
 import { TemplateSelector } from './sections/TemplateSelector';
 
 interface ResumeFormProps {
@@ -35,6 +37,18 @@ export const ResumeForm = ({ resume, onResumeUpdate }: ResumeFormProps) => {
   const updateProjects = (projects: any[]) => {
     updateResume({
       sections: { ...resume.sections, projects }
+    });
+  };
+
+  const updateExperience = (experience: any[]) => {
+    updateResume({
+      sections: { ...resume.sections, experience }
+    });
+  };
+
+  const updateEducation = (education: any[]) => {
+    updateResume({
+      sections: { ...resume.sections, education }
     });
   };
 
@@ -120,69 +134,23 @@ export const ResumeForm = ({ resume, onResumeUpdate }: ResumeFormProps) => {
         </div>
       </div>
 
+      {/* Experience Section */}
+      <ExperienceSection
+        experience={resume.sections.experience}
+        onUpdate={updateExperience}
+      />
+
+      {/* Education Section */}
+      <EducationSection
+        education={resume.sections.education}
+        onUpdate={updateEducation}
+      />
+
       {/* Projects */}
       <ProjectsSection
         projects={resume.sections.projects || []}
         onUpdate={updateProjects}
       />
-
-      {/* Experience Section */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label>Experience</Label>
-          <Button type="button" size="sm" variant="outline">
-            <Plus className="h-4 w-4 mr-1" />
-            Add Experience
-          </Button>
-        </div>
-        <div className="space-y-4">
-          {resume.sections.experience.map((exp, index) => (
-            <div key={exp.id} className="border rounded-lg p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium">{exp.position} at {exp.company}</h4>
-                <Button type="button" size="sm" variant="ghost">
-                  <Edit className="h-4 w-4" />
-                </Button>
-              </div>
-              <p className="text-sm text-gray-600">
-                {exp.startDate} - {exp.current ? 'Present' : exp.endDate}
-              </p>
-              <ul className="text-sm text-gray-700 space-y-1">
-                {exp.description.map((desc, descIndex) => (
-                  <li key={descIndex}>• {desc}</li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Education Section */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label>Education</Label>
-          <Button type="button" size="sm" variant="outline">
-            <Plus className="h-4 w-4 mr-1" />
-            Add Education
-          </Button>
-        </div>
-        <div className="space-y-4">
-          {resume.sections.education.map((edu, index) => (
-            <div key={edu.id} className="border rounded-lg p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium">{edu.degree} in {edu.field}</h4>
-                <Button type="button" size="sm" variant="ghost">
-                  <Edit className="h-4 w-4" />
-                </Button>
-              </div>
-              <p className="text-sm text-gray-600">{edu.institution}</p>
-              <p className="text-sm text-gray-600">
-                {edu.startDate} - {edu.current ? 'Present' : edu.endDate}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };
