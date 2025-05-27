@@ -51,6 +51,15 @@ export interface CustomSection {
   content: string[];
 }
 
+export interface ResumeVersion {
+  id: string;
+  resumeId: string;
+  timestamp: Date;
+  description: string;
+  data: Resume;
+  isAutoSave: boolean;
+}
+
 export interface Resume {
   id: string;
   userInfo: UserBasicInfo;
@@ -66,4 +75,17 @@ export interface Resume {
   language: string;
   lastModified: Date;
   createdAt: Date;
+  atsScore?: number;
+  aiSuggestions?: AISuggestion[];
+}
+
+export interface AISuggestion {
+  id: string;
+  type: 'grammar' | 'style' | 'content' | 'ats' | 'keyword';
+  section: string;
+  field?: string;
+  message: string;
+  suggestion: string;
+  severity: 'low' | 'medium' | 'high';
+  applied: boolean;
 }

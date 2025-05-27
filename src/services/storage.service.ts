@@ -1,4 +1,3 @@
-
 import { Resume, UserBasicInfo } from '@/types/resume';
 
 const STORAGE_KEYS = {

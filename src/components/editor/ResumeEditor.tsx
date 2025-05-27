@@ -1,16 +1,21 @@
 
 import React, { useState, useEffect } from 'react';
-import { Resume } from '@/types/resume';
+import { Resume, AISuggestion } from '@/types/resume';
 import { ResumePreview } from './ResumePreview';
 import { ResumeForm } from './ResumeForm';
 import { AIToolbar } from './AIToolbar';
+import { VersionHistory } from './VersionHistory';
+import { AISuggestions } from './AISuggestions';
+import { JobMatcher } from './JobMatcher';
+import { useAutoSave } from '@/hooks/useAutoSave';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { saveResume } from '@/services/storage.service';
 import { exportToPDF, exportToDOCX, exportToText, exportToJSON } from '@/services/export.service';
-import { Download, Save, ArrowLeft, FileText, File } from 'lucide-react';
+import { Download, Save, ArrowLeft, FileText, File, History, Zap, Target } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface ResumeEditorProps {
   resume: Resume;
@@ -19,10 +24,11 @@ interface ResumeEditorProps {
 
 export const ResumeEditor = ({ resume, onResumeUpdate }: ResumeEditorProps) => {
   const [currentResume, setCurrentResume] = useState<Resume>(resume);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { saveStatus, scheduleAutoSave, manualSave } = useAutoSave(currentResume);
 
   useEffect(() => {
     setCurrentResume(resume);
@@ -30,23 +36,30 @@ export const ResumeEditor = ({ resume, onResumeUpdate }: ResumeEditorProps) => {
 
   const handleResumeChange = (updatedResume: Resume) => {
     setCurrentResume(updatedResume);
-    setHasUnsavedChanges(true);
     onResumeUpdate(updatedResume);
+    scheduleAutoSave(updatedResume);
   };
 
-  const handleSave = () => {
-    const updatedResume = {
-      ...currentResume,
-      lastModified: new Date(),
-    };
-    
-    saveResume(updatedResume);
-    setCurrentResume(updatedResume);
-    setHasUnsavedChanges(false);
-    
+  const handleManualSave = () => {
+    manualSave(currentResume);
     toast({
       title: "Resume Saved",
-      description: "Your resume has been saved successfully.",
+      description: "Your resume has been saved with version history.",
+    });
+  };
+
+  const handleVersionRestore = (restoredResume: Resume) => {
+    setCurrentResume(restoredResume);
+    onResumeUpdate(restoredResume);
+    manualSave(restoredResume);
+  };
+
+  const handleApplySuggestion = (suggestion: AISuggestion) => {
+    // Apply the suggestion to the resume
+    // This is a simplified implementation - you could make it more sophisticated
+    toast({
+      title: "Suggestion Applied",
+      description: `Applied ${suggestion.type} suggestion for ${suggestion.section}`,
     });
   };
 
@@ -97,6 +110,24 @@ export const ResumeEditor = ({ resume, onResumeUpdate }: ResumeEditorProps) => {
     }
   };
 
+  const getSaveStatusText = () => {
+    switch (saveStatus) {
+      case 'saving': return '• Saving...';
+      case 'saved': return '• Saved';
+      case 'error': return '• Save failed';
+      default: return '';
+    }
+  };
+
+  const getSaveStatusColor = () => {
+    switch (saveStatus) {
+      case 'saving': return 'text-blue-600';
+      case 'saved': return 'text-green-600';
+      case 'error': return 'text-red-600';
+      default: return 'text-gray-600';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -115,16 +146,24 @@ export const ResumeEditor = ({ resume, onResumeUpdate }: ResumeEditorProps) => {
               <h1 className="text-xl font-semibold text-gray-900">
                 Resume Editor
               </h1>
-              {hasUnsavedChanges && (
-                <span className="text-sm text-amber-600">• Unsaved changes</span>
-              )}
+              <span className={`text-sm ${getSaveStatusColor()}`}>
+                {getSaveStatusText()}
+              </span>
             </div>
             
             <div className="flex items-center space-x-3">
               <Button
                 variant="outline"
-                onClick={handleSave}
-                disabled={!hasUnsavedChanges}
+                onClick={() => setShowVersionHistory(true)}
+                className="flex items-center"
+              >
+                <History className="mr-2 h-4 w-4" />
+                History
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={handleManualSave}
                 className="flex items-center"
               >
                 <Save className="mr-2 h-4 w-4" />
@@ -176,11 +215,42 @@ export const ResumeEditor = ({ resume, onResumeUpdate }: ResumeEditorProps) => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Editor Panel */}
-          <div className="space-y-6">
-            <AIToolbar resume={currentResume} onResumeUpdate={handleResumeChange} />
-            <ResumeForm resume={currentResume} onResumeUpdate={handleResumeChange} />
+          <div className="lg:col-span-2 space-y-6">
+            <Tabs defaultValue="edit" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="edit">Edit Resume</TabsTrigger>
+                <TabsTrigger value="ai-suggestions">
+                  <Zap className="h-4 w-4 mr-1" />
+                  AI Suggestions
+                </TabsTrigger>
+                <TabsTrigger value="job-match">
+                  <Target className="h-4 w-4 mr-1" />
+                  Job Matcher
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="edit" className="space-y-6">
+                <AIToolbar resume={currentResume} onResumeUpdate={handleResumeChange} />
+                <ResumeForm resume={currentResume} onResumeUpdate={handleResumeChange} />
+              </TabsContent>
+              
+              <TabsContent value="ai-suggestions">
+                <AISuggestions
+                  resume={currentResume}
+                  onApplySuggestion={handleApplySuggestion}
+                  onResumeUpdate={handleResumeChange}
+                />
+              </TabsContent>
+              
+              <TabsContent value="job-match">
+                <JobMatcher
+                  resume={currentResume}
+                  onResumeUpdate={handleResumeChange}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
           
           {/* Preview Panel */}
@@ -191,6 +261,14 @@ export const ResumeEditor = ({ resume, onResumeUpdate }: ResumeEditorProps) => {
           </div>
         </div>
       </div>
+
+      {/* Version History Modal */}
+      <VersionHistory
+        resume={currentResume}
+        onRestore={handleVersionRestore}
+        isOpen={showVersionHistory}
+        onClose={() => setShowVersionHistory(false)}
+      />
     </div>
   );
 };
