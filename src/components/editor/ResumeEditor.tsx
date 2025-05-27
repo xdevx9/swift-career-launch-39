@@ -7,8 +7,10 @@ import { AIToolbar } from './AIToolbar';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { saveResume } from '@/services/storage.service';
-import { Download, Save, ArrowLeft } from 'lucide-react';
+import { exportToPDF, exportToDOCX, exportToText, exportToJSON } from '@/services/export.service';
+import { Download, Save, ArrowLeft, FileText, File } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface ResumeEditorProps {
   resume: Resume;
@@ -18,6 +20,7 @@ interface ResumeEditorProps {
 export const ResumeEditor = ({ resume, onResumeUpdate }: ResumeEditorProps) => {
   const [currentResume, setCurrentResume] = useState<Resume>(resume);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -47,48 +50,51 @@ export const ResumeEditor = ({ resume, onResumeUpdate }: ResumeEditorProps) => {
     });
   };
 
-  const handleExport = () => {
-    // Simple text export for now
-    const resumeText = `
-${currentResume.userInfo.fullName}
-${currentResume.userInfo.email} | ${currentResume.userInfo.phone}
-${currentResume.userInfo.location}
-
-PROFESSIONAL SUMMARY
-${currentResume.sections.summary}
-
-EXPERIENCE
-${currentResume.sections.experience.map(exp => `
-${exp.position} at ${exp.company}
-${exp.startDate} - ${exp.current ? 'Present' : exp.endDate}
-${exp.description.join('\n')}
-`).join('\n')}
-
-EDUCATION
-${currentResume.sections.education.map(edu => `
-${edu.degree} in ${edu.field}
-${edu.institution}
-${edu.startDate} - ${edu.current ? 'Present' : edu.endDate}
-`).join('\n')}
-
-SKILLS
-${currentResume.sections.skills.join(', ')}
-    `.trim();
-
-    const blob = new Blob([resumeText], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${currentResume.userInfo.fullName.replace(/\s+/g, '_')}_Resume.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    toast({
-      title: "Resume Exported",
-      description: "Your resume has been downloaded as a text file.",
-    });
+  const handleExport = async (format: string) => {
+    setIsExporting(true);
+    try {
+      switch (format) {
+        case 'pdf':
+          await exportToPDF(currentResume, 'resume-preview');
+          toast({
+            title: "PDF Exported",
+            description: "Your resume has been downloaded as a PDF file.",
+          });
+          break;
+        case 'docx':
+          await exportToDOCX(currentResume);
+          toast({
+            title: "DOCX Exported",
+            description: "Your resume has been downloaded as a DOCX file.",
+          });
+          break;
+        case 'txt':
+          exportToText(currentResume);
+          toast({
+            title: "Text Exported",
+            description: "Your resume has been downloaded as a text file.",
+          });
+          break;
+        case 'json':
+          exportToJSON(currentResume);
+          toast({
+            title: "JSON Exported",
+            description: "Your resume has been downloaded as a JSON file.",
+          });
+          break;
+        default:
+          throw new Error('Unsupported format');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Export Failed",
+        description: `Failed to export ${format.toUpperCase()}. Please try again.`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -124,13 +130,45 @@ ${currentResume.sections.skills.join(', ')}
                 <Save className="mr-2 h-4 w-4" />
                 Save
               </Button>
-              <Button
-                onClick={handleExport}
-                className="flex items-center bg-gradient-to-r from-blue-600 to-purple-600"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Export
-              </Button>
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    disabled={isExporting}
+                    className="flex items-center bg-gradient-to-r from-blue-600 to-purple-600"
+                  >
+                    {isExporting ? (
+                      <>
+                        <div className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                        Exporting...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="mr-2 h-4 w-4" />
+                        Export
+                      </>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport('docx')}>
+                    <File className="mr-2 h-4 w-4" />
+                    Export as DOCX
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport('txt')}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Export as Text
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport('json')}>
+                    <File className="mr-2 h-4 w-4" />
+                    Export as JSON
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -147,7 +185,9 @@ ${currentResume.sections.skills.join(', ')}
           
           {/* Preview Panel */}
           <div className="lg:sticky lg:top-8">
-            <ResumePreview resume={currentResume} />
+            <div id="resume-preview">
+              <ResumePreview resume={currentResume} />
+            </div>
           </div>
         </div>
       </div>
