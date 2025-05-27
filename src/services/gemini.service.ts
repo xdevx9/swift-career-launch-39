@@ -27,7 +27,7 @@ export const generateResumeContent = async (userInfo: UserBasicInfo): Promise<Pa
     3. education - Array of 1-2 education entries
     4. skills - Array of 8-12 relevant technical and soft skills
     
-    Make it ATS-friendly and industry-appropriate. Return only valid JSON without any markdown formatting.
+    Make it ATS-friendly and industry-appropriate. Return only valid JSON without any markdown formatting or code blocks.
     
     Format:
     {
@@ -63,8 +63,21 @@ export const generateResumeContent = async (userInfo: UserBasicInfo): Promise<Pa
       contents: prompt,
     });
 
-    const content = response.text;
-    console.log('Gemini response:', content);
+    let content = response.text;
+    console.log('Raw Gemini response:', content);
+    
+    // Clean up the response by removing markdown code blocks if present
+    if (content.includes('```json')) {
+      content = content.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
+    }
+    if (content.includes('```')) {
+      content = content.replace(/```/g, '');
+    }
+    
+    // Remove any leading/trailing whitespace
+    content = content.trim();
+    
+    console.log('Cleaned content:', content);
     
     // Parse the JSON response
     const resumeData = JSON.parse(content);
@@ -85,6 +98,9 @@ export const generateResumeContent = async (userInfo: UserBasicInfo): Promise<Pa
     return resumeData;
   } catch (error) {
     console.error('Error generating resume:', error);
+    if (error instanceof SyntaxError) {
+      throw new Error('Failed to parse AI response. The AI returned invalid JSON format.');
+    }
     throw new Error('Failed to generate resume content. Please try again.');
   }
 };
@@ -95,15 +111,25 @@ export const enhanceContent = async (content: string, type: 'summary' | 'experie
   }
 
   const prompts = {
-    summary: `Improve this professional summary to be more compelling and ATS-friendly: "${content}"`,
-    experience: `Enhance this job description with stronger action verbs and quantified achievements: "${content}"`,
-    skills: `Suggest additional relevant skills to complement this list: "${content}"`
+    summary: `Improve this professional summary to be more compelling and ATS-friendly. Return only the improved text without any formatting or code blocks: "${content}"`,
+    experience: `Enhance this job description with stronger action verbs and quantified achievements. Return only the improved text without any formatting or code blocks: "${content}"`,
+    skills: `Suggest additional relevant skills to complement this list. Return only a comma-separated list of skills without any formatting or code blocks: "${content}"`
   };
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.0-flash-001',
-    contents: prompts[type],
-  });
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash-001',
+      contents: prompts[type],
+    });
 
-  return response.text || content;
+    let enhancedContent = response.text || content;
+    
+    // Clean up any markdown formatting
+    enhancedContent = enhancedContent.replace(/```.*?```/gs, '').trim();
+    
+    return enhancedContent;
+  } catch (error) {
+    console.error('Error enhancing content:', error);
+    return content; // Return original content if enhancement fails
+  }
 };

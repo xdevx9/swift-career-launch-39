@@ -41,6 +41,7 @@ export const AIToolbar = ({ resume, onResumeUpdate }: AIToolbarProps) => {
         description: "Your professional summary has been improved with AI.",
       });
     } catch (error) {
+      console.error('Enhancement error:', error);
       toast({
         title: "Enhancement Failed",
         description: "Failed to enhance summary. Please try again.",
@@ -73,11 +74,24 @@ export const AIToolbar = ({ resume, onResumeUpdate }: AIToolbarProps) => {
       const skillsText = resume.sections.skills.join(', ');
       const suggestions = await enhanceContent(skillsText, 'skills');
       
+      // Parse the suggestions and add them to existing skills
+      const newSkills = suggestions.split(',').map(skill => skill.trim()).filter(skill => skill);
+      const uniqueSkills = [...new Set([...resume.sections.skills, ...newSkills])];
+      
+      onResumeUpdate({
+        ...resume,
+        sections: {
+          ...resume.sections,
+          skills: uniqueSkills
+        }
+      });
+      
       toast({
-        title: "Skill Suggestions",
-        description: suggestions.substring(0, 100) + "...",
+        title: "Skills Enhanced",
+        description: `Added ${newSkills.length} new skill suggestions to your resume.`,
       });
     } catch (error) {
+      console.error('Skill suggestion error:', error);
       toast({
         title: "Suggestions Failed",
         description: "Failed to get skill suggestions. Please try again.",

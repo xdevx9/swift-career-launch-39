@@ -12,9 +12,9 @@ import {
 import { 
   saveResume, 
   saveUserInfo, 
-  saveGeminiApiKey, 
-  getGeminiApiKey 
+  saveGeminiApiKey,
 } from '@/services/storage.service';
+import { getGeminiApiKey } from '@/config/gemini.config';
 
 const Onboarding = () => {
   const [step, setStep] = useState<'api-key' | 'form'>('api-key');
@@ -23,13 +23,26 @@ const Onboarding = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if API key already exists
-    const existingApiKey = getGeminiApiKey();
-    if (existingApiKey) {
-      initializeGemini(existingApiKey);
-      setStep('form');
+    // Check if API key is available from config or localStorage
+    const apiKey = getGeminiApiKey();
+    if (apiKey) {
+      try {
+        initializeGemini(apiKey);
+        setStep('form');
+        
+        if (apiKey !== localStorage.getItem('ai-resume-builder-gemini-key')) {
+          toast({
+            title: "API Key Loaded",
+            description: "Using pre-configured Gemini API key.",
+          });
+        }
+      } catch (error) {
+        console.error('Failed to initialize with configured API key:', error);
+        // If configured key fails, still show API input
+        setStep('api-key');
+      }
     }
-  }, []);
+  }, [toast]);
 
   const handleApiKeySubmit = (apiKey: string) => {
     try {
