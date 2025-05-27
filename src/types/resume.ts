@@ -1,4 +1,3 @@
-
 export interface UserBasicInfo {
   fullName: string;
   jobTitle: string;
@@ -10,6 +9,7 @@ export interface UserBasicInfo {
   linkedin?: string;
   github?: string;
   portfolio?: string;
+  profilePicture?: string;
 }
 
 export interface Experience {

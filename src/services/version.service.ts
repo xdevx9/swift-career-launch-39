@@ -2,14 +2,25 @@ import { Resume, ResumeVersion } from '@/types/resume';
 
 const STORAGE_KEY = 'ai-resume-builder-versions';
 
-export const saveVersion = (resume: Resume, description: string, isAutoSave = false): void => {
+export const saveVersion = (resume: Resume, description?: string, isAutoSave = false): void => {
   try {
     const versions = getVersions(resume.id);
+    
+    // Generate automatic description if none provided
+    let finalDescription = description;
+    if (!finalDescription) {
+      if (isAutoSave) {
+        finalDescription = `Auto-save - ${new Date().toLocaleTimeString()}`;
+      } else {
+        finalDescription = `Manual save - ${new Date().toLocaleString()}`;
+      }
+    }
+    
     const newVersion: ResumeVersion = {
       id: crypto.randomUUID(),
       resumeId: resume.id,
       timestamp: new Date(),
-      description,
+      description: finalDescription,
       data: JSON.parse(JSON.stringify(resume)), // Deep clone
       isAutoSave,
     };
@@ -25,6 +36,10 @@ export const saveVersion = (resume: Resume, description: string, isAutoSave = fa
   } catch (error) {
     console.error('Error saving version:', error);
   }
+};
+
+export const saveVersionWithCustomName = (resume: Resume, customName: string): void => {
+  saveVersion(resume, customName, false);
 };
 
 export const getVersions = (resumeId: string): ResumeVersion[] => {

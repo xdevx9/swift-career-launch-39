@@ -72,19 +72,33 @@ export const calculateATSScore = async (resume: Resume): Promise<number> => {
   if (!aiInstance) return 0;
 
   const prompt = `
-    Analyze this resume for ATS (Applicant Tracking System) compatibility and return a score from 0-100.
+    Analyze this resume for ATS (Applicant Tracking System) compatibility and return a detailed score from 0-100.
     
-    Consider these factors:
-    - Proper section headers
-    - Keyword usage
-    - Format simplicity
-    - Contact information completeness
-    - Experience descriptions with measurable results
-    - Skills relevance
+    Evaluate these specific criteria:
+    1. Contact Information (10 points): Complete name, email, phone, location
+    2. Section Headers (15 points): Clear, standard headers like "Experience", "Education", "Skills"
+    3. Formatting (20 points): Simple formatting, no tables/graphics, consistent bullet points
+    4. Keywords (25 points): Industry-relevant keywords and skills
+    5. Experience Details (15 points): Job titles, companies, dates, quantified achievements
+    6. Education (10 points): Degree, institution, graduation date
+    7. Skills Section (5 points): Relevant technical and soft skills listed
     
     Resume content: ${JSON.stringify(resume)}
     
-    Return only a number between 0 and 100.
+    Provide a detailed breakdown and return ONLY a JSON object with this format:
+    {
+      "totalScore": 85,
+      "breakdown": {
+        "contactInfo": 8,
+        "sectionHeaders": 12,
+        "formatting": 18,
+        "keywords": 20,
+        "experience": 13,
+        "education": 9,
+        "skills": 5
+      },
+      "feedback": "Brief explanation of the score"
+    }
   `;
 
   try {
@@ -93,8 +107,13 @@ export const calculateATSScore = async (resume: Resume): Promise<number> => {
       contents: prompt,
     });
 
-    const score = parseInt(response.text.trim());
-    return isNaN(score) ? 0 : Math.min(100, Math.max(0, score));
+    let content = response.text.trim();
+    if (content.includes('```json')) {
+      content = content.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
+    }
+
+    const result = JSON.parse(content);
+    return result.totalScore || 0;
   } catch (error) {
     console.error('Error calculating ATS score:', error);
     return 0;

@@ -1,12 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { Resume, ResumeVersion } from '@/types/resume';
-import { getVersions, restoreVersion, deleteVersion } from '@/services/version.service';
+import { getVersions, restoreVersion, deleteVersion, saveVersionWithCustomName } from '@/services/version.service';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Clock, RotateCcw, Trash2, FileText } from 'lucide-react';
+import { Clock, RotateCcw, Trash2, FileText, Save, Edit2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 interface VersionHistoryProps {
@@ -18,6 +20,8 @@ interface VersionHistoryProps {
 
 export const VersionHistory = ({ resume, onRestore, isOpen, onClose }: VersionHistoryProps) => {
   const [versions, setVersions] = useState<ResumeVersion[]>([]);
+  const [newVersionName, setNewVersionName] = useState('');
+  const [isCreatingVersion, setIsCreatingVersion] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -35,7 +39,7 @@ export const VersionHistory = ({ resume, onRestore, isOpen, onClose }: VersionHi
       onRestore(restoredResume);
       toast({
         title: "Version Restored",
-        description: `Restored to version from ${formatDistanceToNow(new Date(version.timestamp))} ago`,
+        description: `Restored to "${version.description}"`,
       });
       onClose();
     } else {
@@ -52,8 +56,34 @@ export const VersionHistory = ({ resume, onRestore, isOpen, onClose }: VersionHi
     setVersions(versions.filter(v => v.id !== version.id));
     toast({
       title: "Version Deleted",
-      description: "Version has been removed from history",
+      description: `"${version.description}" has been removed from history`,
     });
+  };
+
+  const handleCreateNamedVersion = () => {
+    if (!newVersionName.trim()) return;
+    
+    setIsCreatingVersion(true);
+    try {
+      saveVersionWithCustomName(resume, newVersionName.trim());
+      const updatedVersions = getVersions(resume.id).sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      setVersions(updatedVersions);
+      setNewVersionName('');
+      toast({
+        title: "Version Saved",
+        description: `Created version "${newVersionName.trim()}"`,
+      });
+    } catch (error) {
+      toast({
+        title: "Save Failed",
+        description: "Failed to create version",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingVersion(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -71,6 +101,24 @@ export const VersionHistory = ({ resume, onRestore, isOpen, onClose }: VersionHi
               Close
             </Button>
           </div>
+          
+          {/* Create Named Version */}
+          <div className="mt-4 flex gap-2">
+            <Input
+              placeholder="Enter version name (e.g., 'Final Draft', 'Before Interview')"
+              value={newVersionName}
+              onChange={(e) => setNewVersionName(e.target.value)}
+              className="flex-1"
+            />
+            <Button
+              onClick={handleCreateNamedVersion}
+              disabled={!newVersionName.trim() || isCreatingVersion}
+              className="flex items-center gap-1"
+            >
+              <Save className="h-3 w-3" />
+              Save Version
+            </Button>
+          </div>
         </div>
         
         <ScrollArea className="flex-1 p-6">
@@ -78,6 +126,7 @@ export const VersionHistory = ({ resume, onRestore, isOpen, onClose }: VersionHi
             <div className="text-center py-8 text-gray-500">
               <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No version history available</p>
+              <p className="text-sm mt-2">Save a named version to get started</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -88,7 +137,10 @@ export const VersionHistory = ({ resume, onRestore, isOpen, onClose }: VersionHi
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-medium">{version.description}</h3>
+                      <h3 className="font-medium flex items-center gap-1">
+                        {!version.isAutoSave && <Edit2 className="h-3 w-3 text-blue-500" />}
+                        {version.description}
+                      </h3>
                       {version.isAutoSave && (
                         <Badge variant="secondary" className="text-xs">
                           Auto-save
