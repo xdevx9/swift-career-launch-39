@@ -26,8 +26,12 @@ export const ResumePreview = ({ resume }: ResumePreviewProps) => {
   };
 
   return (
-    <div className="bg-gray-100 p-4 rounded-lg">
-      {renderTemplate()}
+    <div className="w-full h-full bg-gray-100 p-4 overflow-auto">
+      <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-lg overflow-hidden min-h-[11in] transform scale-75 origin-top">
+        <div className="p-8">
+          {renderTemplate()}
+        </div>
+      </div>
     </div>
   );
 };

@@ -1,7 +1,7 @@
 
 import { GoogleGenAI } from '@google/genai';
 import { Resume, AISuggestion } from '@/types/resume';
-import { getGeminiApiKey } from '@/services/storage.service';
+import { getGeminiApiKey } from '@/config/api.config';
 
 let ai: GoogleGenAI | null = null;
 
@@ -16,54 +16,54 @@ const initializeAI = () => {
 export const analyzeResumeContent = async (resume: Resume): Promise<AISuggestion[]> => {
   const aiInstance = initializeAI();
   if (!aiInstance) {
-    throw new Error('AI not initialized. Please provide your API key.');
+    throw new Error('AI not initialized. Please provide your API key in settings.');
   }
 
-  const prompt = `
-    Analyze this resume content and provide specific suggestions for improvement:
-    
-    ${JSON.stringify(resume, null, 2)}
-    
-    Please provide suggestions in the following categories:
-    1. Grammar and spelling errors
-    2. Style and readability improvements  
-    3. Content enhancement (stronger action verbs, quantified achievements)
-    4. ATS optimization (keyword usage, formatting)
-    5. Missing information or sections
-    
-    Return a JSON array of suggestions with this format:
-    [
-      {
-        "type": "grammar|style|content|ats|keyword",
-        "section": "summary|experience|education|skills|projects",
-        "field": "specific field name if applicable",
-        "message": "Description of the issue",
-        "suggestion": "Specific improvement suggestion",
-        "severity": "low|medium|high"
-      }
-    ]
+  const resumeText = `
+    Name: ${resume.userInfo.fullName}
+    Title: ${resume.userInfo.jobTitle}
+    Summary: ${resume.sections.summary}
+    Experience: ${resume.sections.experience.map(exp => `${exp.position} at ${exp.company}: ${exp.description.join(', ')}`).join('; ')}
+    Education: ${resume.sections.education.map(edu => `${edu.degree} from ${edu.institution}`).join('; ')}
+    Skills: ${resume.sections.skills.join(', ')}
   `;
 
-  try {
-    const response = await aiInstance.models.generateContent({
-      model: 'gemini-2.0-flash-001',
-      contents: prompt,
-    });
+  const prompt = `Analyze this resume and provide 5-8 specific suggestions for improvement. Focus on ATS optimization, content enhancement, and professional presentation.
 
-    let content = response.text.trim();
+Resume content:
+${resumeText}
+
+Return a JSON array with this exact format:
+[
+  {
+    "type": "ats|content|grammar|style|keyword",
+    "section": "summary|experience|education|skills|userInfo",
+    "field": "specific field name if applicable",
+    "message": "Brief description of the issue",
+    "suggestion": "Specific improvement recommendation",
+    "severity": "low|medium|high"
+  }
+]`;
+
+  try {
+    const model = aiInstance.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let content = response.text().trim();
+    
     if (content.includes('```json')) {
       content = content.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
     }
 
     const suggestions = JSON.parse(content);
     return suggestions.map((suggestion: any, index: number) => ({
-      id: `suggestion-${index}`,
+      id: `suggestion-${Date.now()}-${index}`,
       applied: false,
       ...suggestion,
     }));
   } catch (error) {
     console.error('Error analyzing resume:', error);
-    return [];
+    throw new Error('Failed to analyze resume. Please check your API key and try again.');
   }
 };
 
@@ -71,49 +71,19 @@ export const calculateATSScore = async (resume: Resume): Promise<number> => {
   const aiInstance = initializeAI();
   if (!aiInstance) return 0;
 
-  const prompt = `
-    Analyze this resume for ATS (Applicant Tracking System) compatibility and return a detailed score from 0-100.
-    
-    Evaluate these specific criteria:
-    1. Contact Information (10 points): Complete name, email, phone, location
-    2. Section Headers (15 points): Clear, standard headers like "Experience", "Education", "Skills"
-    3. Formatting (20 points): Simple formatting, no tables/graphics, consistent bullet points
-    4. Keywords (25 points): Industry-relevant keywords and skills
-    5. Experience Details (15 points): Job titles, companies, dates, quantified achievements
-    6. Education (10 points): Degree, institution, graduation date
-    7. Skills Section (5 points): Relevant technical and soft skills listed
-    
-    Resume content: ${JSON.stringify(resume)}
-    
-    Provide a detailed breakdown and return ONLY a JSON object with this format:
-    {
-      "totalScore": 85,
-      "breakdown": {
-        "contactInfo": 8,
-        "sectionHeaders": 12,
-        "formatting": 18,
-        "keywords": 20,
-        "experience": 13,
-        "education": 9,
-        "skills": 5
-      },
-      "feedback": "Brief explanation of the score"
-    }
-  `;
+  const prompt = `Rate this resume for ATS compatibility on a scale of 0-100. Consider: contact info completeness (10%), clear section headers (15%), simple formatting (20%), relevant keywords (25%), detailed experience (15%), education info (10%), skills section (5%).
+
+Resume: ${JSON.stringify(resume)}
+
+Return only a number between 0-100.`;
 
   try {
-    const response = await aiInstance.models.generateContent({
-      model: 'gemini-2.0-flash-001',
-      contents: prompt,
-    });
-
-    let content = response.text.trim();
-    if (content.includes('```json')) {
-      content = content.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
-    }
-
-    const result = JSON.parse(content);
-    return result.totalScore || 0;
+    const model = aiInstance.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const scoreText = response.text().trim();
+    const score = parseInt(scoreText.match(/\d+/)?.[0] || '0');
+    return Math.min(Math.max(score, 0), 100);
   } catch (error) {
     console.error('Error calculating ATS score:', error);
     return 0;
@@ -129,35 +99,24 @@ export const optimizeForJobDescription = async (
     throw new Error('AI not initialized.');
   }
 
-  const prompt = `
-    Optimize this resume to better match the job description while keeping all information truthful.
-    
-    Current Resume: ${JSON.stringify(resume)}
-    
-    Job Description: ${jobDescription}
-    
-    Provide improvements for:
-    1. Professional summary tailored to the role
-    2. Skills reordering/highlighting relevant ones
-    3. Experience descriptions emphasizing relevant achievements
-    4. Suggested keywords to include
-    
-    Return only the modified sections in JSON format:
-    {
-      "summary": "improved summary",
-      "skills": ["reordered skills array"],
-      "experience": [updated experience entries with same structure],
-      "suggestions": ["keyword suggestions array"]
-    }
-  `;
+  const prompt = `Optimize this resume for the job description. Suggest improvements while keeping information truthful.
+
+Resume: ${JSON.stringify(resume.sections)}
+Job Description: ${jobDescription}
+
+Return JSON with improved sections:
+{
+  "summary": "improved summary",
+  "skills": ["relevant skills array"],
+  "suggestions": ["keyword suggestions"]
+}`;
 
   try {
-    const response = await aiInstance.models.generateContent({
-      model: 'gemini-2.0-flash-001',
-      contents: prompt,
-    });
-
-    let content = response.text.trim();
+    const model = aiInstance.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let content = response.text().trim();
+    
     if (content.includes('```json')) {
       content = content.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
     }

@@ -1,6 +1,6 @@
 
 import { GoogleGenAI } from '@google/genai';
-import { getGeminiApiKey } from '@/config/gemini.config';
+import { getGeminiApiKey } from '@/config/api.config';
 import { Resume } from '@/types/resume';
 
 let ai: GoogleGenAI | null = null;
@@ -29,7 +29,7 @@ export interface JobMatchSuggestions {
 export const analyzeJobMatch = async (resume: Resume, jobDescription: string): Promise<JobMatchSuggestions> => {
   const aiInstance = initializeAI();
   if (!aiInstance) {
-    throw new Error('Job matcher service not available');
+    throw new Error('Job matcher service not available. Please configure your API key.');
   }
 
   const resumeContent = {
@@ -42,7 +42,7 @@ export const analyzeJobMatch = async (resume: Resume, jobDescription: string): P
     skills: resume.sections.skills
   };
 
-  const prompt = `Analyze how well this resume matches the following job description and provide suggestions for improvement.
+  const prompt = `Analyze how well this resume matches the job description. Provide specific feedback.
 
 RESUME:
 ${JSON.stringify(resumeContent, null, 2)}
@@ -50,9 +50,9 @@ ${JSON.stringify(resumeContent, null, 2)}
 JOB DESCRIPTION:
 ${jobDescription}
 
-Please provide a JSON response with the following structure:
+Return JSON in this exact format:
 {
-  "matchScore": (number between 0-100),
+  "matchScore": 75,
   "missingSkills": ["skill1", "skill2"],
   "suggestedImprovements": {
     "summary": "improved summary text",
@@ -60,25 +60,14 @@ Please provide a JSON response with the following structure:
     "skills": ["skill1", "skill2"]
   },
   "keywordSuggestions": ["keyword1", "keyword2"]
-}
-
-Focus on:
-1. Skills alignment
-2. Experience relevance
-3. Keywords from job description
-4. Industry-specific terminology
-
-Return only valid JSON.`;
+}`;
 
   try {
-    const response = await aiInstance.models.generateContent({
-      model: 'gemini-2.0-flash-001',
-      contents: prompt,
-    });
-
-    let content = response.text?.trim() || '';
+    const model = aiInstance.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let content = response.text().trim();
     
-    // Clean up response
     if (content.includes('```json')) {
       content = content.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
     }
@@ -86,7 +75,7 @@ Return only valid JSON.`;
     return JSON.parse(content);
   } catch (error) {
     console.error('Job match analysis error:', error);
-    throw new Error('Failed to analyze job match');
+    throw new Error('Failed to analyze job match. Please try again.');
   }
 };
 

@@ -1,73 +1,62 @@
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Resume } from '@/types/resume';
-import { saveResume } from '@/services/storage.service';
 import { saveVersion } from '@/services/version.service';
 
-export const useAutoSave = (resume: Resume, delay = 3000) => {
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
+export const useAutoSave = (initialResume: Resume) => {
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const timeoutRef = useRef<NodeJS.Timeout>();
   const lastSavedRef = useRef<string>('');
 
-  const save = useCallback((currentResume: Resume, isManual = false) => {
-    const resumeString = JSON.stringify(currentResume);
+  const scheduleAutoSave = useCallback((resume: Resume) => {
+    const resumeString = JSON.stringify(resume);
     
-    // Don't save if no changes
-    if (resumeString === lastSavedRef.current) {
-      return;
+    // Don't save if content hasn't changed
+    if (resumeString === lastSavedRef.current) return;
+    
+    // Clear existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
     }
-    
+
     setSaveStatus('saving');
     
-    try {
-      const updatedResume = {
-        ...currentResume,
-        lastModified: new Date(),
-      };
-      
-      saveResume(updatedResume);
-      
-      if (isManual) {
-        saveVersion(updatedResume, 'Manual save');
-      } else {
-        saveVersion(updatedResume, 'Auto save', true);
+    // Auto-save after 2 seconds of inactivity
+    timeoutRef.current = setTimeout(() => {
+      try {
+        saveVersion(resume, undefined, true);
+        lastSavedRef.current = resumeString;
+        setSaveStatus('saved');
+        
+        // Reset to idle after 2 seconds
+        setTimeout(() => setSaveStatus('idle'), 2000);
+      } catch (error) {
+        console.error('Auto-save failed:', error);
+        setSaveStatus('error');
+        setTimeout(() => setSaveStatus('idle'), 3000);
       }
-      
-      lastSavedRef.current = resumeString;
+    }, 2000);
+  }, []);
+
+  const manualSave = useCallback((resume: Resume) => {
+    try {
+      setSaveStatus('saving');
+      saveVersion(resume, `Manual save - ${new Date().toLocaleString()}`, false);
+      lastSavedRef.current = JSON.stringify(resume);
       setSaveStatus('saved');
-      
       setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error) {
-      console.error('Auto-save error:', error);
+      console.error('Manual save failed:', error);
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 3000);
     }
   }, []);
 
-  const scheduleAutoSave = useCallback((currentResume: Resume) => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    
-    timeoutRef.current = setTimeout(() => {
-      save(currentResume, false);
-    }, delay);
-  }, [save, delay]);
-
-  const manualSave = useCallback((currentResume: Resume) => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    save(currentResume, true);
-  }, [save]);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
-  return { saveStatus, scheduleAutoSave, manualSave };
+  return {
+    saveStatus,
+    scheduleAutoSave,
+    manualSave,
+  };
 };
