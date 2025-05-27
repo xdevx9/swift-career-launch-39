@@ -1,8 +1,11 @@
 
 import React from 'react';
-import { FileText, ArrowDown } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { FileText } from 'lucide-react';
 
 export const CTA = () => {
+  const navigate = useNavigate();
+
   return (
     <section className="py-24 px-6">
       <div className="mx-auto max-w-4xl text-center">
@@ -16,7 +19,10 @@ export const CTA = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="group relative overflow-hidden rounded-full bg-white px-8 py-4 text-lg font-semibold text-gray-900 transition-all duration-300 hover:shadow-xl hover:scale-105">
+            <button 
+              onClick={() => navigate('/create')}
+              className="group relative overflow-hidden rounded-full bg-white px-8 py-4 text-lg font-semibold text-gray-900 transition-all duration-300 hover:shadow-xl hover:scale-105"
+            >
               <span className="flex items-center justify-center">
                 <FileText className="mr-2 h-5 w-5" />
                 Start Building Now

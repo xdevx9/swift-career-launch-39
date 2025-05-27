@@ -1,8 +1,11 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FileText, Sparkles, ArrowDown } from 'lucide-react';
 
 export const Hero = () => {
+  const navigate = useNavigate();
+
   return (
     <section className="relative overflow-hidden px-6 py-20 lg:py-32">
       <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-indigo-600/10"></div>
@@ -29,7 +32,10 @@ export const Hero = () => {
           </p>
           
           <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
-            <button className="group relative overflow-hidden rounded-full bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-4 text-lg font-semibold text-white shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105">
+            <button 
+              onClick={() => navigate('/create')}
+              className="group relative overflow-hidden rounded-full bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-4 text-lg font-semibold text-white shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105"
+            >
               <span className="relative z-10 flex items-center justify-center">
                 <FileText className="mr-2 h-5 w-5" />
                 Create My Resume
