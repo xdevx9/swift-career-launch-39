@@ -7,34 +7,43 @@ import { saveResume, saveUserInfo } from '@/services/storage.service';
 
 const Onboarding = () => {
   const navigate = useNavigate();
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const handleOnboardingComplete = (userInfo: UserBasicInfo) => {
-    // Save user info
-    saveUserInfo(userInfo);
+  const handleOnboardingComplete = async (userInfo: UserBasicInfo) => {
+    setIsGenerating(true);
+    
+    try {
+      // Save user info
+      saveUserInfo(userInfo);
 
-    // Create initial resume
-    const newResume: Resume = {
-      id: Date.now().toString(),
-      userInfo,
-      sections: {
-        summary: '',
-        experience: [],
-        education: [],
-        projects: [],
-        skills: [],
-        customSections: [],
-      },
-      template: 'modern',
-      language: 'en',
-      lastModified: new Date(),
-      createdAt: new Date(),
-    };
+      // Create initial resume
+      const newResume: Resume = {
+        id: Date.now().toString(),
+        userInfo,
+        sections: {
+          summary: '',
+          experience: [],
+          education: [],
+          projects: [],
+          skills: [],
+          customSections: [],
+        },
+        template: 'modern',
+        language: 'en',
+        lastModified: new Date(),
+        createdAt: new Date(),
+      };
 
-    // Save the resume
-    saveResume(newResume);
+      // Save the resume
+      saveResume(newResume);
 
-    // Navigate to editor
-    navigate('/editor');
+      // Navigate to editor
+      navigate('/editor');
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -51,7 +60,10 @@ const Onboarding = () => {
             </p>
           </div>
           
-          <OnboardingForm onComplete={handleOnboardingComplete} />
+          <OnboardingForm 
+            onComplete={handleOnboardingComplete} 
+            isGenerating={isGenerating}
+          />
         </div>
       </div>
     </div>
